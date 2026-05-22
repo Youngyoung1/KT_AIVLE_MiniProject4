@@ -5,8 +5,8 @@ export const page = {
 export const headerRow = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: '28px',
+  alignItems: 'flex-start',
+  marginBottom: '20px',
 }
 
 export const title = {
@@ -29,6 +29,7 @@ export const primaryButton = {
   fontWeight: 600,
   fontSize: '14px',
   cursor: 'pointer',
+  flexShrink: 0,
 }
 
 export const errorBox = {
@@ -68,6 +69,16 @@ export const emptyButton = {
   color: '#fff',
   border: 'none',
   padding: '11px 26px',
+  borderRadius: '6px',
+  fontWeight: 600,
+  cursor: 'pointer',
+}
+
+export const noResultButton = {
+  background: '#f5f5f5',
+  color: '#555',
+  border: 'none',
+  padding: '9px 20px',
   borderRadius: '6px',
   fontWeight: 600,
   cursor: 'pointer',
@@ -219,3 +230,83 @@ export const overlayBtn = (bg) => ({
   fontWeight: 600,
   cursor: 'pointer',
 })
+
+// ── Search ────────────────────────────────────────────────────
+export const searchWrapper = {
+  position: 'relative',
+  marginBottom: '14px',
+}
+
+export const searchIcon = {
+  position: 'absolute',
+  left: '13px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  pointerEvents: 'none',
+}
+
+export const searchInput = (active) => ({
+  width: '100%',
+  padding: '11px 40px 11px 40px',
+  border: `1.5px solid ${active ? '#1976d2' : '#e0e0e0'}`,
+  borderRadius: '8px',
+  fontSize: '14px',
+  outline: 'none',
+  transition: 'border-color .18s',
+  boxShadow: active ? '0 0 0 3px rgba(25,118,210,.1)' : 'none',
+})
+
+export const clearButton = {
+  position: 'absolute',
+  right: '12px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: '#9e9e9e',
+  fontSize: '18px',
+  lineHeight: 1,
+  padding: '2px',
+}
+
+// ── Filter bar ────────────────────────────────────────────────
+export const filterBar = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  marginBottom: '24px',
+  flexWrap: 'wrap',
+}
+
+export const sortSelect = {
+  padding: '7px 12px',
+  border: '1px solid #e0e0e0',
+  borderRadius: '6px',
+  fontSize: '13px',
+  background: '#fff',
+  cursor: 'pointer',
+  color: '#444',
+}
+
+export const filterToggle = (active) => ({
+  padding: '7px 14px',
+  borderRadius: '6px',
+  fontSize: '13px',
+  fontWeight: active ? 700 : 400,
+  cursor: 'pointer',
+  border: `1.5px solid ${active ? '#1565c0' : '#e0e0e0'}`,
+  background: active ? '#e3f2fd' : '#fff',
+  color: active ? '#1565c0' : '#666',
+  transition: 'all .15s',
+})
+
+export const resetButton = {
+  padding: '7px 12px',
+  borderRadius: '6px',
+  fontSize: '13px',
+  background: 'none',
+  border: '1px solid #e0e0e0',
+  color: '#999',
+  cursor: 'pointer',
+}
