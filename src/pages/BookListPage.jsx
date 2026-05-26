@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getBooks, deleteBook } from '../services/api'
+import { getBooks, deleteBook, updateBook } from '../services/api'
 import {
   page,
   headerRow,
@@ -46,7 +46,7 @@ function CoverPlaceholder({ title }) {
 }
 
 // ── Grid card (vertical book-cover style) ─────────────────────
-function BookCard({ book, onDelete }) {
+function BookCard({ book, onDelete, onToggleFavorite }) {
   const navigate  = useNavigate()
   const [hovered, setHovered] = useState(false)
 
@@ -54,6 +54,11 @@ function BookCard({ book, onDelete }) {
     e.stopPropagation()
     if (!confirm(`"${book.title}" 을(를) 삭제하시겠습니까?`)) return
     await onDelete(book.id)
+  }
+
+  const handleFavorite = async (e) => {
+    e.stopPropagation();
+    await onToggleFavorite(book)
   }
 
   return (
@@ -88,6 +93,17 @@ function BookCard({ book, onDelete }) {
 
       {/* ── Card info ── */}
       <div style={infoWrapper}>
+        <button onClick={handleFavorite}
+            style={{
+                alignSelf: 'flex-end',
+                border: 'none',
+                background: 'transparent',
+                fontSize: '22px',
+                cursor: 'pointer',
+                marginBottom: '4px',
+            }}
+        >{book.favorite ? '❤️' : '🤍'}</button>
+
         <div>
           <div style={infoTitle}>
             {book.title}
@@ -140,6 +156,24 @@ export default function BookListPage() {
     }
   }
 
+  async function handleToggleFavorite(book){
+    try {
+      const nextFavorite = !book.favorite
+        
+        await updateBook(book.id, {
+          favorite: nextFavorite,
+        })
+
+        setBooks(prev => prev.map(b =>
+          b.id === book.id
+          ? {...b, favorite: nextFavorite}
+          : b
+        ))
+    } catch {
+        alert('즐겨찾기 변경에 실패했습니다.')
+    }
+  }
+
   if (loading) return <div className="spinner" />
 
   return (
@@ -185,7 +219,7 @@ export default function BookListPage() {
       {/* ── Grid ── */}
       <div style={grid}>
         {books.map(book => (
-          <BookCard key={book.id} book={book} onDelete={handleDelete} />
+          <BookCard key={book.id} book={book} onDelete={handleDelete} onToggleFavorite={handleToggleFavorite} />
         ))}
       </div>
     </div>
