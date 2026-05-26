@@ -28,6 +28,7 @@ export const createBook = (data) =>
     method: 'POST',
     body: JSON.stringify({
       ...data,
+      favorite: false,
       coverImageUrl: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
