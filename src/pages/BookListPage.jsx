@@ -41,7 +41,7 @@ function CoverPlaceholder({ title }) {
 }
 
 // ── Grid card ─────────────────────────────────────────────────
-function BookCard({ book, query, onDelete }) {
+function BookCard({ book, query, onDelete, onToggleFavorite }) {
   const navigate  = useNavigate()
   const [hovered, setHovered] = useState(false)
 
@@ -119,6 +119,7 @@ export default function BookListPage() {
   const [query,    setQuery]    = useState(() => searchParams.get('q') || '')
   const [sortBy,   setSortBy]   = useState('newest')
   const [filterAI, setFilterAI] = useState(false)
+  const [filterFavorite, setFilterFavorite] = useState(false)
   const searchRef = useRef(null)
 
   useEffect(() => { load() }, [])
@@ -154,6 +155,23 @@ export default function BookListPage() {
       alert('삭제에 실패했습니다.')
     }
   }
+  async function handleToggleFavorite(book) {
+    try {
+        const nextFavorite = !book.favorite
+
+        await updateBook(book.id, {
+        favorite: nextFavorite,
+        })
+
+        setBooks(prev => prev.map(b =>
+            b.id === book.id
+            ? { ...b, favorite: nextFavorite }
+            : b
+        ))
+    } catch {
+        alert('즐겨찾기 변경에 실패했습니다.')
+    }
+  }
 
   // Filter + sort (client-side, instant)
   const filtered = useMemo(() => {
@@ -164,15 +182,16 @@ export default function BookListPage() {
       (b.description || '').toLowerCase().includes(q)
     )
     if (filterAI) result = result.filter(b => !!b.coverImageUrl)
+    if (filterFavorite) result = result.filter(b => b.favorite)
     return [...result].sort((a, b) => {
       if (sortBy === 'title')  return a.title.localeCompare(b.title, 'ko')
       if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt)
       return new Date(b.createdAt) - new Date(a.createdAt)
     })
-  }, [books, query, sortBy, filterAI])
+  }, [books, query, sortBy, filterAI, filterFavorite])
 
   const hasActiveFilter = query.trim() || filterAI || sortBy !== 'newest'
-  const resetAll = () => { setQuery(''); setSortBy('newest'); setFilterAI(false) }
+  const resetAll = () => { setQuery(''); setSortBy('newest'); setFilterAI(false); setFilterFavorite(false)}
 
   if (loading) return <div className="spinner" />
 
@@ -229,6 +248,9 @@ return (
         <button onClick={() => setFilterAI(p => !p)} style={filterToggle(filterAI)}>
           🎨 AI 표지만 보기
         </button>
+        <button onClick={() => setFilterFavorite(p => !p)} style={filterToggle(filterFavorite)}>
+          ❤️ 즐겨찾기만 보기
+        </button>
         {hasActiveFilter && (
           <button onClick={resetAll} style={resetButton}>초기화</button>
         )}
@@ -263,7 +285,7 @@ return (
       {filtered.length > 0 && (
         <div style={grid}>
           {filtered.map(book => (
-            <BookCard key={book.id} book={book} query={query} onDelete={handleDelete} />
+            <BookCard key={book.id} book={book} query={query} onDelete={handleDelete} onToggleFavorite={handleToggleFavorite} />
           ))}
         </div>
       )}
