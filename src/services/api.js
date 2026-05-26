@@ -1,5 +1,5 @@
 // All API calls use /api/* which is:
-//  - Local dev : proxied by Vite to http://localhost:3000 (json-server)
+//  - Local dev : proxied by Vite to http://localhost:3001 (api/server.js)
 //  - Vercel    : handled by api/server.js serverless function
 
 const BASE = '/api'
@@ -13,7 +13,6 @@ async function request(url, options = {}) {
     const text = await res.text()
     throw new Error(text || `HTTP ${res.status}`)
   }
-  // DELETE returns {} from json-server
   const text = await res.text()
   return text ? JSON.parse(text) : {}
 }
@@ -83,6 +82,7 @@ export async function generateCover({ apiKey, model, quality, title, description
     },
     body: JSON.stringify(body),
   })
+
   // 첫 시도: 기존 DALL·E 엔드포인트
   let data
   if (!res.ok) {
@@ -115,6 +115,7 @@ export async function generateCover({ apiKey, model, quality, title, description
   } else {
     data = await res.json()
   }
+
   // ④ b64_json → Data URL
   const b64Json = data.data?.[0]?.b64_json
   if (!b64Json) throw new Error('이미지 응답에서 b64_json을 찾을 수 없습니다.')
