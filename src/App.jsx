@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import BookListPage from './pages/BookListPage'
 import BookDetailPage from './pages/BookDetailPage'
 import BookFormPage from './pages/BookFormPage'
+import BestsellersPage from './pages/BestSellerPage'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/books/new"      element={<BookFormPage />} />
         <Route path="/books/:id"      element={<BookDetailPage />} />
         <Route path="/books/:id/edit" element={<BookFormPage />} />
+        <Route path="/bestsellers"    element={<BestsellersPage />} />
       </Routes>
     </BrowserRouter>
   )
