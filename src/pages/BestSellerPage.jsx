@@ -48,6 +48,7 @@ function BookCard({ book, query }) {
               alt={book.title}
               onError={() => setImgErr(true)}
               style={coverImg}
+              referrerPolicy="no-referrer"
             />
           : <div style={coverPlaceholder(book.rank)}>
               <span style={placeholderIcon}>📚</span>
