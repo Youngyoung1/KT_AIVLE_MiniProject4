@@ -42,7 +42,6 @@ app.get('/api/bestsellers', async (req, res) => {
       price:     String(item.priceSales).replace(/\B(?=(\d{3})+(?!\d))/g, ','),
       isbn:      item.isbn13 || item.isbn,
       cover:     item.cover,
-      kyoboUrl:  `https://www.kyobobook.co.kr/product/detailViewKor.laf?barcode=${item.isbn13 || item.isbn}`,
       aladinUrl: item.link,
       pubDate:   item.pubDate,
     }))

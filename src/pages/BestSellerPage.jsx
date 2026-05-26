@@ -9,7 +9,8 @@ import {
   cardPublisher, priceRow, priceText, kyoboCardButton, highlight,
 } from '../styles/BestSellerPageStyles'
 
-const KYOBO_BEST = 'https://www.kyobobook.co.kr/bestSeller/bestseller.laf'
+// 💡 알라딘 공식 웹 사이트 베스트셀러 주소로 변경
+const ALADIN_BEST = 'https://www.aladin.co.kr/shop/common/wbest.aspx?BranchType=1'
 
 // ── Keyword highlight ─────────────────────────────────────────
 function Highlight({ text = '', query = '' }) {
@@ -73,14 +74,15 @@ function BookCard({ book, query }) {
           <span style={priceText}>{book.price ? `${book.price}원` : ''}</span>
         </div>
 
+        {/* 💡 텍스트 문구 및 경로 매핑 변경 (스타일 변수명은 유지) */}
         <a
-          href={book.kyoboUrl}
+          href={book.aladinUrl} // 백엔드에서 알라딘 링크를 여기에 매핑해 주었으므로 그대로 사용합니다.
           target="_blank"
           rel="noopener noreferrer"
           onClick={e => e.stopPropagation()}
           style={kyoboCardButton(hovered)}
         >
-          교보문고에서 보기 →
+          알라딘에서 보기 →
         </a>
       </div>
     </div>
@@ -126,10 +128,18 @@ export default function BestsellerPage() {
         )
       : [...books]
 
-    if      (sortBy === 'title')      r.sort((a, b) => a.title.localeCompare(b.title, 'ko'))
-    else if (sortBy === 'price-asc')  r.sort((a, b) => parseInt(a.price?.replace(/,/g, '') || 0) - parseInt(b.price?.replace(/,/g, '') || 0))
-    else if (sortBy === 'price-desc') r.sort((a, b) => parseInt(b.price?.replace(/,/g, '') || 0) - parseInt(a.price?.replace(/,/g, '') || 0))
-    else                              r.sort((a, b) => a.rank - b.rank)
+    if (sortBy === 'title') {
+      r.sort((a, b) => a.title.localeCompare(b.title, 'ko'))
+    } else if (sortBy === 'price-asc' || sortBy === 'price-desc') {
+      // 💡 콤마(,)를 완전히 제거하고 숫자로 파싱하여 비교 (NaN 방지)
+      r.sort((a, b) => {
+        const priceA = parseInt(String(a.price).replace(/[^0-9]/g, '')) || 0
+        const priceB = parseInt(String(b.price).replace(/[^0-9]/g, '')) || 0
+        return sortBy === 'price-asc' ? priceA - priceB : priceB - priceA
+      })
+    } else {
+      r.sort((a, b) => a.rank - b.rank)
+    }
 
     return r
   }, [books, query, sortBy])
@@ -147,17 +157,18 @@ export default function BestsellerPage() {
           <p style={countText}>
             {query.trim()
               ? <><strong style={countHighlight}>{filtered.length}</strong>건 검색됨 / 전체 {books.length}권</>
-              : `교보문고 베스트셀러 ${books.length}권`
+              : `알라딘 베스트셀러 ${books.length}권` // 💡 텍스트 교체
             }
           </p>
         </div>
 
-        <a href={KYOBO_BEST} target="_blank" rel="noopener noreferrer" style={kyoboButton}>
+        {/* 💡 버튼 링크 및 텍스트 교체 */}
+        <a href={ALADIN_BEST} target="_blank" rel="noopener noreferrer" style={kyoboButton}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
-          교보문고 바로가기
+          알라딘 바로가기
         </a>
       </div>
 
@@ -215,11 +226,12 @@ export default function BestsellerPage() {
       )}
 
       {/* ── Footer ── */}
+      {/* 💡 하단 카피라이트 출처 교체 */}
       {!loading && books.length > 0 && (
         <div style={footer}>
-          <p style={footerText}>데이터 출처: 교보문고 베스트셀러</p>
-          <a href={KYOBO_BEST} target="_blank" rel="noopener noreferrer" style={footerLink}>
-            교보문고 전체 베스트셀러 보기 →
+          <p style={footerText}>데이터 출처: 알라딘 베스트셀러 API</p>
+          <a href={ALADIN_BEST} target="_blank" rel="noopener noreferrer" style={footerLink}>
+            알라딘 전체 베스트셀러 보기 →
           </a>
         </div>
       )}

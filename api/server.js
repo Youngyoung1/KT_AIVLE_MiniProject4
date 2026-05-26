@@ -32,47 +32,50 @@ app.use(middlewares)
 
 // ── Bestsellers: 매 요청마다 교보문고에서 실시간 스크래핑 ─────
 // 저장 없음 — 항상 fresh fetch
+// ── Bestsellers: 알라딘 공식 API 활용 (안정성 100%) ─────
 app.get('/bestsellers', async (req, res) => {
   try {
-    const response = await fetch(
-      'https://www.kyobobook.co.kr/bestSeller/bestseller.laf?mallGb=KOR&orderClick=LAG',
-      {
-        headers: {
-          'User-Agent':      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Referer':         'https://www.kyobobook.co.kr/',
-        },
-        timeout: 10000,
-      }
-    )
+    // 💡 상위 폴더 .env에 있는 API 키 가져오기
+    const apiKey = process.env.ALADIN_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("서버 환경 변수에 ALADIN_API_KEY가 설정되지 않았습니다.");
+    }
 
-    if (!response.ok) throw new Error(`교보문고 응답 오류: HTTP ${response.status}`)
+    // 알라딘 공식 상품 리스트 API URL (QueryType=Bestseller)
+    const aladinApiUrl = `http://www.aladin.co.kr/ttb/api/ItemList.aspx?ttbkey=${apiKey}&QueryType=Bestseller&MaxResults=30&start=1&SearchTarget=Book&output=js&Version=20131101`;
 
-    const html  = await response.text()
-    const $     = cheerio.load(html)
-    const books = []
+    const response = await fetch(aladinApiUrl, { timeout: 10000 });
 
-    $('.prod_item').each((i, el) => {
-      if (books.length >= 100) return false
-      const $el       = $(el)
-      const isbn      = $el.find('[data-barcode]').attr('data-barcode') || ''
-      const title     = $el.find('.prod_name').text().trim() || $el.find('.title').text().trim()
-      const author    = $el.find('.prod_author').text().trim()    || ''
-      const publisher = $el.find('.prod_publisher').text().trim() || ''
-      const price     = $el.find('.prod_price').text().trim().replace(/[^\d,]/g, '') || ''
-      const cover     = $el.find('img').attr('src') || ''
-      const kyoboUrl  = isbn
-        ? `https://www.kyobobook.co.kr/product/detailViewKor.laf?barcode=${isbn}`
-        : ''
+    if (!response.ok) {
+      throw new Error(`알라딘 API 응답 오류: HTTP ${response.status}`);
+    }
 
-      if (title) books.push({ rank: i + 1, title, author, publisher, price, isbn, cover, kyoboUrl })
-    })
+    const data = await response.json();
+    
+    // 알라딘 결과 데이터가 없거나 에러가 반환된 경우 처리
+    if (!data.item || data.errorMessage) {
+      throw new Error(data.errorMessage || "알라딘에서 도서 정보를 가져오지 못했습니다.");
+    }
 
-    if (books.length === 0) throw new Error('파싱된 도서가 없습니다. 교보문고 HTML 구조가 변경되었을 수 있습니다.')
+    // 💡 기존 프론트엔드 데이터 형식과 동일하게 매핑
+    const books = data.item.map((book, i) => ({
+      rank: i + 1,
+      title: book.title,
+      author: book.author,
+      publisher: book.publisher,
+      price: book.priceStandard ? String(book.priceStandard) : '',
+      isbn: book.isbn13 || book.isbn || '',
+      cover: book.cover, // 도서 표지 이미지 URL
+      kyoboUrl: book.link // 프론트엔드 변수명(kyoboUrl)에 알라딘 상세 페이지 링크 매핑
+    }));
 
-    res.json({ source: 'live', books })
+    res.json({ source: 'aladin_api', books });
+
   } catch (err) {
-    res.status(502).json({ error: err.message })
+    console.error("Aladin API Error: ", err.message);
+    // Vercel 배포 환경에서 프론트엔드가 멈추지 않도록 200 상태코드와 빈 배열 반환
+    res.status(200).json({ source: 'error_fallback', books: [], message: err.message });
   }
 })
 
