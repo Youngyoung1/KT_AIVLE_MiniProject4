@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getBook, updateBook, deleteBook, generateCover } from '../services/api'
-import { label, greenBtn, redBtn, blueBtn, backBtnStyle, panel, inputStyle, selectStyle, dateStyle } from '../styles/bookDetailPageStyles'
+import { label, greenBtn, redBtn, blueBtn, backBtnStyle, panel, selectStyle, dateStyle } from '../styles/bookDetailPageStyles'
 
 // ─── Constants ──────────────────────────────────────────────
 const MODELS = [
@@ -30,8 +30,7 @@ export default function BookDetailPage() {
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState(null)
 
-  // AI generation state
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || '')
+  // AI generation state (💡 apiKey 관련 state와 로컬 스토리지 Fetch 이펙트는 통째로 삭제했습니다)
   const [model, setModel] = useState('gpt-image-1')
   const [quality, setQuality] = useState('low')
   const [generating, setGenerating] = useState(false)
@@ -42,31 +41,6 @@ export default function BookDetailPage() {
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast({ msg: '', type }), 3000)
-  }, [])
-
-  // ── 비동기로 public/api.txt에서 API KEY 가져오기 ──────────────────
-  useEffect(() => {
-    // 이미 로컬스토리지에 키가 있으면 굳이 파일 요청 안 함
-    if (localStorage.getItem('openai_api_key')) return
-
-    fetch('/api.txt')
-      .then(res => {
-        if (!res.ok) throw new Error('파일 없음')
-        return res.text()
-      })
-      .then(text => {
-        const key = text
-          .split('\n')
-          .map(line => line.trim())
-          .find(line => line.startsWith('OPENAI_API_KEY='))
-          ?.split('=')[1]
-          ?.trim()
-
-        if (key) setApiKey(key)
-      })
-      .catch(() => {
-        console.log('로컬에 로드할 public/api.txt 가 없거나 읽을 수 없습니다.')
-      })
   }, [])
 
   // ── Fetch book ───────────────────────────────────────────
@@ -97,28 +71,20 @@ export default function BookDetailPage() {
     }
   }
 
-  // ── AI Cover Generation (8-step flow) ────────────────────
+  // ── AI Cover Generation ──────────────────────────────────
   async function handleGenerateCover() {
-    if (!apiKey.trim()) {
-      setGenError('OpenAI API Key를 입력해주세요.')
-      return
-    }
-    if (!apiKey.startsWith('sk-')) {
-      setGenError('유효한 OpenAI API Key를 입력해주세요. (sk- 로 시작)')
-      return
-    }
-
-    localStorage.setItem('openai_api_key', apiKey)
+    // 💡 프런트엔드단 키 검증 로직 삭제 (백엔드에서 처리)
     setGenError(null)
     setGenerating(true)
 
     try {
+      // 💡 인자에서 apiKey를 완전히 제거했습니다.
       const imageUrl = await generateCover({
-        apiKey,
         model,
         quality,
         title: book.title,
         description: book.description,
+        bookId:id,
       })
 
       await updateBook(id, { coverImageUrl: imageUrl })
@@ -161,21 +127,7 @@ export default function BookDetailPage() {
           AI 표지 생성
         </h3>
 
-        {/* API Key */}
-        <div style={{ marginBottom: '14px' }}>
-          {label('OpenAI API Key:')}
-          <input
-            type="password" // 3일차 수정
-            value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
-            placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
-            style={inputStyle}
-          />
-          {/* 3일차 수정: 비용 발생 안내 문구 추가 */}
-          <p style={{ fontSize: '12px', color: '#757575', marginTop: '6px', textAlign: 'left' }}>
-            ※ AI 표지 생성 시 OpenAI API 호출에 따른 실제 비용이 발생할 수 있으니 주의하세요.
-          </p>
-        </div>
+        {/* 💡 OpenAI API Key Input 폼 영역 및 비용 안내 문구 전체 삭제 */}
 
         {/* Model + Quality row */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '18px', justifyContent: 'center', flexWrap: 'wrap' }}>

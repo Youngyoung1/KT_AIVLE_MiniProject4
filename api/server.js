@@ -1,108 +1,100 @@
-require('dotenv').config()
+import express from 'express'
+import { createRequire } from 'module'
+import cors from 'cors'
+import dotenv from 'dotenv'
+import { OpenAI } from 'openai'
+
+dotenv.config()
+
+const require = createRequire(import.meta.url)
 const jsonServer = require('json-server')
-const express    = require('express')
-const fetch      = require('node-fetch')
-const cheerio    = require('cheerio')
 
-// ── json-server (Books CRUD) ──────────────────────────────────
-const initialData = {
-  books: [
-    {
-      id: "1",
-      title: "상록수",
-      description: "이야기를 9기의 수강생이 이전의 과정에서 살습자료로 발표한 '상록수'의 내용을 표지에 담고 싶어.",
-      coverImageUrl: null,
-      createdAt: "2026-04-24T00:00:00.000Z",
-      updatedAt: "2026-05-13T00:00:00.000Z"
-    }
-  ]
-}
+const app = express()
 
-const app        = jsonServer.create()
-const router     = jsonServer.router(initialData)
-const middlewares = jsonServer.defaults({ noCors: false })
+app.use(cors())
+app.use(express.json({ limit: '10mb' }))
 
-// Strip /api prefix forwarded by Vite proxy and Vercel rewrite
-app.use((req, _res, next) => {
-  req.url = req.url.replace(/^\/api/, '') || '/'
-  next()
-})
+// ── OpenAI ────────────────────────────────────────────────────
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-app.use(middlewares)
-
-// ── Bestsellers: 매 요청마다 교보문고에서 실시간 스크래핑 ─────
-// 저장 없음 — 항상 fresh fetch
-// ── Bestsellers: 알라딘 공식 API 활용 (안정성 100%) ─────
-app.get('/bestsellers', async (req, res) => {
+// ── AI Cover Generation ───────────────────────────────────────
+app.post('/api/generate-cover', async (req, res) => {
   try {
-    // 💡 상위 폴더 .env에 있는 API 키 가져오기
-    const apiKey = process.env.ALADIN_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error("서버 환경 변수에 ALADIN_API_KEY가 설정되지 않았습니다.");
+    const { model, quality, prompt } = req.body
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: '서버에 OpenAI API Key가 설정되지 않았습니다.' })
     }
 
-    // 알라딘 공식 상품 리스트 API URL (QueryType=Bestseller)
-    const aladinApiUrl = `http://www.aladin.co.kr/ttb/api/ItemList.aspx?ttbkey=${apiKey}&QueryType=Bestseller&MaxResults=30&start=1&SearchTarget=Book&output=js&Version=20131101`;
+    const response = await openai.images.generate({
+      model: model === 'dall-e-3' ? 'dall-e-3' : 'dall-e-2',
+      prompt: prompt || 'A beautiful book cover illustration',
+      n: 1,
+      size: '1024x1024',
+      quality: quality === 'high' ? 'hd' : 'standard',
+      response_format: 'b64_json',
+    })
 
-    const response = await fetch(aladinApiUrl, { timeout: 10000 });
-
-    if (!response.ok) {
-      throw new Error(`알라딘 API 응답 오류: HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // 알라딘 결과 데이터가 없거나 에러가 반환된 경우 처리
-    if (!data.item || data.errorMessage) {
-      throw new Error(data.errorMessage || "알라딘에서 도서 정보를 가져오지 못했습니다.");
-    }
-
-    // 💡 기존 프론트엔드 데이터 형식과 동일하게 매핑
-// 💡 data.item 배열을 순회하며 프론트엔드 형식에 맞게 매핑
-  const books = data.item.map((book, i) => {
-    
-    // 1. 보안용 HTTPS 치환
-    const secureCoverUrl = (book.cover || '').replace(/^http:/, 'https:');
-    
-    // ⚠️ 2. [핵심] 저화질 경로(coversum)를 고화질 대형 이미지 경로(cover500)로 강제 치환!
-    // 이렇게 하면 알라딘 API 옵션이 꼬여도 무조건 고화질 이미지를 가져옵니다.
-    const highResCoverUrl = secureCoverUrl.replace('/coversum/', '/cover500/');
-
-    const secureAladinUrl = (book.link || '').replace(/^http:/, 'https:');
-
-    return {
-      rank: i + 1,
-      title: book.title,
-      author: book.author,
-      publisher: book.publisher,
-      price: book.priceSales ? String(book.priceSales).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '',
-      isbn: book.isbn13 || book.isbn || '',
-      
-      // 💡 가공된 고화질 이미지 주소를 넣어줍니다.
-      cover: highResCoverUrl, 
-      kyoboUrl: secureAladinUrl,
-      aladinUrl: secureAladinUrl,
-      pubDate: book.pubDate || ''
-    };
-  });
-
-    res.json({ source: 'aladin_api', books });
-
-  } catch (err) {
-    console.error("Aladin API Error: ", err.message);
-    // Vercel 배포 환경에서 프론트엔드가 멈추지 않도록 200 상태코드와 빈 배열 반환
-    res.status(200).json({ source: 'error_fallback', books: [], message: err.message });
+    const base64Image = response.data[0].b64_json
+    const imageSrc = `data:image/png;base64,${base64Image}`
+    return res.json({ imageSrc })
+  } catch (error) {
+    console.error('OpenAI Error:', error)
+    return res.status(500).json({ error: error.message || '이미지 생성 중 오류가 발생했습니다.' })
   }
 })
 
-// json-server 라우터는 맨 마지막에
-app.use(router)
+// ── Bestsellers ───────────────────────────────────────────────
+app.get('/api/bestsellers', async (req, res) => {
+  try {
+    const fetch = (await import('node-fetch')).default
+    const cheerio = (await import('cheerio')).default || (await import('cheerio'))
 
-// Local dev
-if (require.main === module) {
-  const PORT = process.env.PORT || 3001
-  app.listen(PORT, () => console.log(`✅  Server → http://localhost:${PORT}`))
-}
+    const response = await fetch(
+      'https://www.kyobobook.co.kr/bestSeller/bestseller.laf?mallGb=KOR&orderClick=LAG',
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+        },
+        timeout: 10000,
+      }
+    )
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-module.exports = app
+    const html = await response.text()
+    const $ = cheerio.load(html)
+    const books = []
+
+    $('.prod_item').each((i, el) => {
+      if (books.length >= 100) return false
+      const $el = $(el)
+      const isbn = $el.find('[data-barcode]').attr('data-barcode') || ''
+      const title = $el.find('.prod_name').text().trim()
+      const author = $el.find('.prod_author').text().trim() || ''
+      const publisher = $el.find('.prod_publisher').text().trim() || ''
+      const price = $el.find('.prod_price').text().trim().replace(/[^\d,]/g, '') || ''
+      const cover = $el.find('img').attr('src') || ''
+      const kyoboUrl = isbn ? `https://www.kyobobook.co.kr/product/detailViewKor.laf?barcode=${isbn}` : ''
+      if (title) books.push({ rank: i + 1, title, author, publisher, price, isbn, cover, kyoboUrl })
+    })
+
+    if (books.length === 0) throw new Error('파싱된 도서가 없습니다.')
+    res.json({ source: 'live', books })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// ── json-server (Books CRUD) ──────────────────────────────────
+const dbRouter = jsonServer.router('db.json')
+const middlewares = jsonServer.defaults({ noCors: false })
+
+// /api/* → /* 변환 후 json-server로
+app.use('/api', middlewares, dbRouter)
+
+// ── Start ─────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+  console.log(`✅ 통합 백엔드 서버가 ${PORT}번 포트에서 가동 중입니다.`)
+})

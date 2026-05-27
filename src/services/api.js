@@ -45,91 +45,31 @@ export const deleteBook = (id) =>
 
 // ─── AI Cover Generation ────────────────────────────────────
 // Flow:
-//  ① validate apiKey
-//  ② caller sets loading = true
-//  ③ POST to OpenAI → b64_json
-//  ④ convert to Data URL
-//  ⑤ caller PATCHes coverImageUrl to json-server
+//  ① caller sets loading = true (컴포넌트 단에서 처리)
+//  ② POST to 우리 백엔드 서버 (/api/generate-cover) 
+//  ③ 백엔드가 Vercel Env에서 키를 꺼내 OpenAI와 통신 후 가공된 b64_json(Data URL) 응답
+//  ④ bookId가 주어지면 json-server의 해당 도서에 coverImageUrl만 PATCH
 //  (returned string is the Data URL)
 
-export async function generateCover({ apiKey, model, quality, title, description, bookId }) {
-  const modelConfig = {
-    'gpt-image-1': { size: '1024x1536' },
-    'dall-e-3': { size: '1024x1792' },
-  }
-
+// 💡 이제 파라미터에서 apiKey가 완전히 제외되었습니다!
+export async function generateCover({ model, quality, title, description, bookId }) {
   const prompt =
     `A professional, artistic book cover for a book titled "${title}".` +
     (description ? ` The book is about: ${description}.` : '') +
     ' Style: high-quality publisher design, visually striking, elegant typography.'
 
-  const body = {
-    model,
-    prompt,
-    n: 1,
-    size: modelConfig[model]?.size ?? '1024x1536',
-    output_format: 'png',
-  }
-
-  // dall-e-3 uses 'standard'/'hd' quality; gpt-image-1 uses 'low'/'medium'/'high'
-  if (model === 'gpt-image-1') body.quality = quality
-  if (model === 'dall-e-3') body.quality = quality === 'high' ? 'hd' : 'standard'
-
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
+  const responseData = await request(`${BASE}/generate-cover`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model, quality, prompt }),
   })
 
-  // 첫 시도: 기존 DALL·E 엔드포인트
-  let data
-  if (!res.ok) {
-    // 상세한 응답 읽기
-    let errBody
-    try { errBody = await res.json() } catch { errBody = await res.text() }
-    const errMsg = errBody?.error?.message || String(errBody)
+  const imageSrc = responseData.imageSrc
+  if (!imageSrc) throw new Error('서버 응답에서 이미지 데이터를 찾을 수 없습니다.')
 
-    // 일부 환경에서 메서드 오류가 발생하면 대체 엔드포인트로 재시도
-    if (res.status === 405 || /Invalid method/i.test(errMsg)) {
-      const altRes = await fetch('https://api.openai.com/v1/images/generate', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (!altRes.ok) {
-        let altErr
-        try { altErr = await altRes.json() } catch { altErr = await altRes.text() }
-        throw new Error(altErr?.error?.message || String(altErr) || 'OpenAI API 오류가 발생했습니다.')
-      }
-
-      data = await altRes.json()
-    } else {
-      throw new Error(errMsg || 'OpenAI API 오류가 발생했습니다.')
-    }
-  } else {
-    data = await res.json()
-  }
-
-  // ④ b64_json → Data URL
-  const b64Json = data.data?.[0]?.b64_json
-  if (!b64Json) throw new Error('이미지 응답에서 b64_json을 찾을 수 없습니다.')
-  const imageSrc = `data:image/png;base64,${b64Json}`
-
-  // ⑤ bookId가 주어지면 json-server의 해당 도서에 coverImageUrl만 PATCH
   if (bookId) {
     await request(`${BASE}/books/${bookId}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        coverImageUrl: imageSrc,
-        updatedAt: new Date().toISOString(),
-      }),
+      body: JSON.stringify({ coverImageUrl: imageSrc, updatedAt: new Date().toISOString() }),
     })
   }
 
