@@ -6,13 +6,13 @@ import { label, greenBtn, redBtn, blueBtn, backBtnStyle, panel, inputStyle, sele
 // ─── Constants ──────────────────────────────────────────────
 const MODELS = [
   { value: 'gpt-image-1', label: 'GPT Image 1 (1024×1536)' },
-  { value: 'dall-e-3',    label: 'DALL-E 3 (1024×1792)'    },
+  { value: 'dall-e-3', label: 'DALL-E 3 (1024×1792)' },
 ]
 
 const QUALITY_OPTIONS = [
-  { value: 'low',    label: 'Low'    },
+  { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
-  { value: 'high',   label: 'High'   },
+  { value: 'high', label: 'High' },
 ]
 
 // ─── Toast ───────────────────────────────────────────────────
@@ -23,19 +23,19 @@ function Toast({ msg, type }) {
 
 // ─── Main component ──────────────────────────────────────────
 export default function BookDetailPage() {
-  const { id }  = useParams()
+  const { id } = useParams()
   const navigate = useNavigate()
 
-  const [book,      setBook]      = useState(null)
-  const [loading,   setLoading]   = useState(true)
+  const [book, setBook] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState(null)
 
   // AI generation state
-  const [apiKey,     setApiKey]     = useState(() => localStorage.getItem('openai_api_key') || '')
-  const [model,      setModel]      = useState('gpt-image-1')
-  const [quality,    setQuality]    = useState('low')
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || '')
+  const [model, setModel] = useState('gpt-image-1')
+  const [quality, setQuality] = useState('low')
   const [generating, setGenerating] = useState(false)
-  const [genError,   setGenError]   = useState(null)
+  const [genError, setGenError] = useState(null)
 
   // Toast
   const [toast, setToast] = useState({ msg: '', type: 'success' })
@@ -72,17 +72,17 @@ export default function BookDetailPage() {
   // ── Fetch book ───────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        setLoading(true)
-        const data = await getBook(id)
-        if (!cancelled) setBook(data)
-      } catch {
-        if (!cancelled) setPageError('도서 정보를 불러오지 못했습니다.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
+      ; (async () => {
+        try {
+          setLoading(true)
+          const data = await getBook(id)
+          if (!cancelled) setBook(data)
+        } catch {
+          if (!cancelled) setPageError('도서 정보를 불러오지 못했습니다.')
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
+      })()
     return () => { cancelled = true }
   }, [id])
 
@@ -117,7 +117,7 @@ export default function BookDetailPage() {
         apiKey,
         model,
         quality,
-        title:       book.title,
+        title: book.title,
         description: book.description,
       })
 
@@ -133,7 +133,7 @@ export default function BookDetailPage() {
   }
 
   // ── Render states ────────────────────────────────────────
-  if (loading)   return <div className="spinner" />
+  if (loading) return <div className="spinner" />
   if (pageError) return (
     <div className="page" style={{ color: '#c62828' }}>
       <p>{pageError}</p>
@@ -151,7 +151,7 @@ export default function BookDetailPage() {
         <h1 style={{ fontSize: '26px', fontWeight: 700 }}>{book.title}</h1>
         <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
           <button onClick={() => navigate(`/books/${id}/edit`)} style={greenBtn}>수정</button>
-          <button onClick={handleDelete}                         style={redBtn}>삭제</button>
+          <button onClick={handleDelete} style={redBtn}>삭제</button>
         </div>
       </div>
 
@@ -165,12 +165,16 @@ export default function BookDetailPage() {
         <div style={{ marginBottom: '14px' }}>
           {label('OpenAI API Key:')}
           <input
-            type="text"
+            type="password" // 3일차 수정
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
             placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
             style={inputStyle}
           />
+          {/* 3일차 수정: 비용 발생 안내 문구 추가 */}
+          <p style={{ fontSize: '12px', color: '#757575', marginTop: '6px', textAlign: 'left' }}>
+            ※ AI 표지 생성 시 OpenAI API 호출에 따른 실제 비용이 발생할 수 있으니 주의하세요.
+          </p>
         </div>
 
         {/* Model + Quality row */}

@@ -55,7 +55,7 @@ export const deleteBook = (id) =>
 export async function generateCover({ apiKey, model, quality, title, description, bookId }) {
   const modelConfig = {
     'gpt-image-1': { size: '1024x1536' },
-    'dall-e-3':    { size: '1024x1792' },
+    'dall-e-3': { size: '1024x1792' },
   }
 
   const prompt =
@@ -73,7 +73,7 @@ export async function generateCover({ apiKey, model, quality, title, description
 
   // dall-e-3 uses 'standard'/'hd' quality; gpt-image-1 uses 'low'/'medium'/'high'
   if (model === 'gpt-image-1') body.quality = quality
-  if (model === 'dall-e-3')    body.quality = quality === 'high' ? 'hd' : 'standard'
+  if (model === 'dall-e-3') body.quality = quality === 'high' ? 'hd' : 'standard'
 
   const res = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
