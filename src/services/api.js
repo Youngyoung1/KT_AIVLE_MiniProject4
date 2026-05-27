@@ -2,7 +2,10 @@
 //  - Local dev : proxied by Vite to http://localhost:3001 (api/server.js)
 //  - Vercel    : handled by api/server.js serverless function
 
-const BASE = '/api'
+const BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}`
+  : '/api'
+
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
